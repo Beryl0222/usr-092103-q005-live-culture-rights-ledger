@@ -1,0 +1,9 @@
+{
+  "event_id": "092103-005-sample-001",
+  "event_type": "SEGMENT_REGISTERED",
+  "aggregate_type": "live_session",
+  "aggregate_id": "live_culture_rights_ledger-001",
+  "occurred_at": "2026-09-20T16:00:00+08:00",
+  "version": 1,
+  "summary": "直播文化节目权益账联调样例"
+}
