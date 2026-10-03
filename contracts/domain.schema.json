@@ -1,29 +1,52 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "直播文化节目权益账领域事件",
+  "description": "所有授权、发布与结算变化都以不可变事件交换；信封字段保持向后兼容，事件明细放在 payload。",
   "type": "object",
-  "required": [
-    "event_id",
-    "event_type",
-    "aggregate_type",
-    "aggregate_id",
-    "occurred_at",
-    "version",
-    "summary"
-  ],
+  "required": ["event_id", "event_type", "aggregate_type", "aggregate_id", "occurred_at", "version", "summary"],
   "properties": {
-    "event_id": {
-      "type": "string",
-      "minLength": 1
-    },
+    "event_id": { "type": "string", "minLength": 1 },
+    "event_type": { "$ref": "#/$defs/event_type" },
+    "aggregate_type": { "$ref": "#/$defs/aggregate_type" },
+    "aggregate_id": { "type": "string", "minLength": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "version": { "type": "integer", "minimum": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "correlation_id": { "type": "string" },
+    "cause_id": { "type": "string" },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": true,
+  "$defs": {
     "event_type": {
       "type": "string",
       "enum": [
+        "SESSION_SCHEDULED",
+        "SESSION_STARTED",
+        "SESSION_ENDED",
         "SEGMENT_REGISTERED",
+        "PARTICIPANT_REGISTERED",
+        "MATERIAL_REGISTERED",
+        "MATERIAL_VERIFIED",
+        "MATERIAL_LINKED",
+        "SEGMENT_CAST",
         "CONSENT_CAPTURED",
+        "PERMISSION_GRANTED",
+        "PERMISSION_EXPIRED",
+        "RESTRICTION_APPLIED",
+        "RESTRICTION_LIFTED",
         "RELEASE_RESTRICTED",
+        "CONTRIBUTIONS_RECORDED",
+        "CONTRACT_AGREED",
+        "TIP_PLACED",
+        "TIP_REFUNDED",
         "REVENUE_ALLOCATED",
-        "RIGHTS_ADJUSTED"
+        "RIGHTS_ADJUSTED",
+        "REPLAY_PUBLISHED",
+        "REPLAY_TAKEN_DOWN",
+        "CLIP_PROPOSED",
+        "CLIP_PUBLISHED",
+        "CLIP_REJECTED"
       ]
     },
     "aggregate_type": {
@@ -31,26 +54,61 @@
       "enum": [
         "live_session",
         "program_segment",
+        "participant",
+        "material_source",
         "usage_permission",
-        "revenue_entry"
+        "audience_contribution",
+        "contract_terms",
+        "tip_order",
+        "revenue_entry",
+        "replay_version",
+        "secondary_clip"
       ]
     },
-    "aggregate_id": {
+    "use": {
       "type": "string",
-      "minLength": 1
+      "description": "授权用途/发布渠道：直播、回放、商业短视频剪辑",
+      "enum": ["LIVE_WEBCAST", "REPLAY", "COMMERCIAL_CLIP"]
     },
-    "occurred_at": {
+    "consent_status": {
       "type": "string",
-      "format": "date-time"
+      "enum": ["granted", "pending_confirmation", "declined"]
     },
-    "version": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "summary": {
+    "consent_channel": {
       "type": "string",
-      "minLength": 1
+      "enum": ["written", "oral", "guardian", "platform_license"]
+    },
+    "restriction_reason": {
+      "type": "string",
+      "description": "限制原因的稳定口径，观众端据此映射中文说明",
+      "enum": [
+        "minor_in_mic",
+        "music_unidentified",
+        "rights_expired",
+        "pending_consent",
+        "declined_consent",
+        "consent_missing",
+        "unlicensed_material",
+        "use_not_licensed",
+        "territory_not_licensed",
+        "takedown_request"
+      ]
+    },
+    "revenue_kind": {
+      "type": "string",
+      "enum": ["initial", "reversal", "supplement"]
+    },
+    "adjustment_kind": {
+      "type": "string",
+      "enum": ["supplement_payment", "reversal"]
+    },
+    "ms_range": {
+      "type": "object",
+      "required": ["start_offset_ms", "end_offset_ms"],
+      "properties": {
+        "start_offset_ms": { "type": "integer", "minimum": 0 },
+        "end_offset_ms": { "type": "integer", "minimum": 0 }
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }
