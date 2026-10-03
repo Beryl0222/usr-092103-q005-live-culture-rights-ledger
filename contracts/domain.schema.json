@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "直播文化节目权益账领域事件",
+  "description": "所有授权与发布变化都以不可变事件追加保存；同一 aggregate_id 下 version 必须严格递增。payload 携带事件专属字段，毫秒偏移一律相对于直播场次时间轴（同一直播场次内可直接做区间求交）。",
   "type": "object",
   "required": [
     "event_id",
@@ -19,11 +20,30 @@
     "event_type": {
       "type": "string",
       "enum": [
+        "SESSION_SCHEDULED",
+        "SESSION_STARTED",
+        "SESSION_ENDED",
         "SEGMENT_REGISTERED",
+        "PARTICIPANT_REGISTERED",
+        "MATERIAL_LINKED",
+        "MATERIAL_VERIFIED",
+        "PERMISSION_GRANTED",
         "CONSENT_CAPTURED",
+        "CONSENT_CONFIRMED",
+        "CONSENT_WITHDRAWN",
         "RELEASE_RESTRICTED",
+        "RELEASE_CLEARED",
+        "CONTRACT_EXECUTED",
+        "CONTRIBUTION_RECEIVED",
+        "TIP_PLACED",
+        "TIP_REFUNDED",
         "REVENUE_ALLOCATED",
-        "RIGHTS_ADJUSTED"
+        "RIGHTS_ADJUSTED",
+        "REPLAY_PUBLISHED",
+        "REPLAY_TAKEN_DOWN",
+        "CUT_PROPOSED",
+        "CUT_PUBLISHED",
+        "CUT_REJECTED"
       ]
     },
     "aggregate_type": {
@@ -31,8 +51,15 @@
       "enum": [
         "live_session",
         "program_segment",
+        "participant",
+        "material_source",
         "usage_permission",
-        "revenue_entry"
+        "contract",
+        "viewer_contribution",
+        "tip_order",
+        "revenue_entry",
+        "replay_version",
+        "derived_cut"
       ]
     },
     "aggregate_id": {
@@ -50,7 +77,149 @@
     "summary": {
       "type": "string",
       "minLength": 1
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1 },
+        "segment_id": { "type": "string", "minLength": 1 },
+        "participant_id": { "type": "string", "minLength": 1 },
+        "material_id": { "type": "string", "minLength": 1 },
+        "permission_id": { "type": "string", "minLength": 1 },
+        "contract_id": { "type": "string", "minLength": 1 },
+        "tip_id": { "type": "string", "minLength": 1 },
+        "contribution_id": { "type": "string", "minLength": 1 },
+        "replay_id": { "type": "string", "minLength": 1 },
+        "cut_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["INHERITOR", "MUSICIAN", "VIEWER", "PLATFORM"]
+        },
+        "material_type": {
+          "type": "string",
+          "enum": ["HERITAGE_DEMO", "ACCOMPANIMENT", "VOICE_LINK", "PLATFORM_CLIP", "OTHER"]
+        },
+        "source_ref": { "type": "string" },
+        "right_holder_id": { "type": "string" },
+        "uses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["LIVE_BROADCAST", "REPLAY", "COMMERCIAL_CUT"]
+          },
+          "uniqueItems": true
+        },
+        "territories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "valid_from": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": ["string", "null"], "format": "date-time" },
+        "time_windows": { "$ref": "#/$defs/time_windows" },
+        "consent_state": {
+          "type": "string",
+          "enum": ["PENDING", "CONFIRMED", "WITHDRAWN"]
+        },
+        "certainty": {
+          "type": "string",
+          "enum": ["VERIFIED", "UNCERTAIN"]
+        },
+        "restriction": { "$ref": "#/$defs/restriction" },
+        "restriction_id": { "type": "string" },
+        "revenue_share": {
+          "type": "object",
+          "description": "合同分成：角色/参与者 id -> 比例（0~1 之间），含 PLATFORM 抽成",
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "platform_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "amount": { "type": "integer", "minimum": 0, "description": "金额，单位分" },
+        "currency": { "type": "string", "enum": ["CNY"] },
+        "order_no": { "type": "string" },
+        "entry_kind": { "type": "string", "enum": ["INITIAL_ALLOCATION", "REVERSAL"] },
+        "adjustment_kind": { "type": "string", "enum": ["TOP_UP", "REVERSAL"] },
+        "allocations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["payee_id", "amount"],
+            "properties": {
+              "payee_id": { "type": "string" },
+              "amount": { "type": "integer" },
+              "basis": { "type": "string", "description": "结算依据，如合同版本号/事件 id" }
+            }
+          }
+        },
+        "reason": { "type": "string" },
+        "note": { "type": "string" },
+        "is_minor": { "type": "boolean", "description": "参与者是否为未成年人" },
+        "source_segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["segment_id", "time_windows"],
+            "properties": {
+              "segment_id": { "type": "string" },
+              "time_windows": { "$ref": "#/$defs/time_windows" }
+            }
+          }
+        },
+        "version_no": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "$defs": {
+    "time_window": {
+      "type": "object",
+      "description": "直播场次时间轴上的半开区间 [start_ms, end_ms)，单位毫秒",
+      "required": ["start_ms", "end_ms"],
+      "properties": {
+        "start_ms": { "type": "integer", "minimum": 0 },
+        "end_ms": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "time_windows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/time_window" },
+      "minItems": 1
+    },
+    "restriction": {
+      "type": "object",
+      "required": ["reason_code", "uses"],
+      "properties": {
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "PENDING_CONSENT",
+            "MINOR_ON_MIC",
+            "BGM_UNVERIFIED",
+            "RIGHTS_EXPIRED",
+            "NOT_LICENSED",
+            "GEO_OUT_OF_SCOPE",
+            "PERMISSION_WITHDRAWN",
+            "MANUAL_HOLD"
+          ]
+        },
+        "uses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["LIVE_BROADCAST", "REPLAY", "COMMERCIAL_CUT"]
+          }
+        },
+        "time_windows": { "$ref": "#/$defs/time_windows" },
+        "territories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "detail_ref": { "type": "string", "description": "关联的待确认同意/素材/许可 id" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
 }
